@@ -282,6 +282,20 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+  static Future<Map<String, dynamic>> getMyCourses() async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+        Uri.parse('$baseUrl/courses/assignments'),
+      headers: headers,
+    );
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception('Failed to load courses');
+    }
+  }
+
   static Future<dynamic> getEligibleCourses(String requestType) async {
     final headers = await _authHeaders();
     final res = await http.get(

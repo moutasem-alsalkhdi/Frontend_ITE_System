@@ -30,7 +30,7 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
 
   Future<void> _loadCourses() async {
     try {
-      final res = await ApiService.getCourses();
+      final res = await ApiService.getMyCourses();
       setState(() => _courses = res['data'] ?? []);
     } catch (_) {
       _showSnack('فشل تحميل المواد', AppColors.failRed);

@@ -28,7 +28,7 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
 
   Future<void> _loadCourses() async {
     try {
-      final res = await ApiService.getCourses();
+      final res = await ApiService.getMyCourses();
       setState(() {
         _courses = res['data'] ?? [];
         _loading = false;
@@ -154,7 +154,7 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
                           controller: _lectureNumberCtrl,
                           keyboardType: TextInputType.text,
                           decoration: const InputDecoration(
-                            labelText: 'رقم المحاضرة (مثال: 1 أو 01)',
+                            labelText: 'رقم المحاضرة (مثال: 1 أو 2)',
                             filled: true,
                             fillColor: Colors.white,
                           ),

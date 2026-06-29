@@ -27,7 +27,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
 
   Future<void> _loadCourses() async {
     try {
-      final res = await ApiService.getCourses();
+      final res = await ApiService.getMyCourses();
       setState(() => _courses = res['data'] ?? []);
     } catch (_) {}
   }
