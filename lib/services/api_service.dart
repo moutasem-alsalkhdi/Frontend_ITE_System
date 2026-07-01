@@ -18,8 +18,8 @@ class ApiService {
     // إذا تم تحديد host عبر --dart-define استخدمه مباشرة
     if (_host.isNotEmpty) return 'http://$_host:8000/api';
     // fallback تلقائي حسب المنصة
-    //final defaultHost = '127.0.0.1';
-    final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+    final defaultHost = '127.0.0.1';
+    //final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
     return 'http://$defaultHost:8000/api';
   }
 
@@ -404,7 +404,6 @@ class ApiService {
     required int courseId,
     required String sessionType,
     required String lectureNumber,
-    required int totalSessions,
     required String qrCode,
   }) async {
     final headers = await _authHeaders();
@@ -415,10 +414,79 @@ class ApiService {
         'qr_code': qrCode,
         'course_id': courseId,
         'session_type': sessionType,
-        'total_sessions': totalSessions,
         'lecture_number': lectureNumber,
       }),
     );
     return jsonDecode(response.body);
+  }
+
+
+  // أضف هذه الدوال:
+
+  static Future<Map> startAttendanceSession({
+    required int courseId,
+    required String sessionType,
+    required String lectureNumber,
+  }) async {
+    final headers = await _authHeaders();
+    final res = await http.post(
+      Uri.parse('$baseUrl/attendance/session/start'),
+      headers: headers,
+      body: jsonEncode({
+        'course_id': courseId,
+        'session_type': sessionType,
+        'lecture_number': lectureNumber,
+      }),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map> recordAttendance({
+    required int sessionId,
+    required String universityId,
+  }) async {
+    final headers = await _authHeaders();
+    final res = await http.post(
+      Uri.parse('$baseUrl/attendance/record'),
+      headers: headers,
+      body: jsonEncode({
+        'session_id': sessionId,
+        'university_id': universityId,
+      }),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map> endAttendanceSession(int sessionId) async {
+    final headers = await _authHeaders();
+    final res = await http.post(
+      Uri.parse('$baseUrl/attendance/session/end'),
+      headers: headers,
+      body: jsonEncode({'session_id': sessionId}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map> getDetailedAttendance({
+    required int courseId,
+    String? sessionType,
+  }) async {
+    final headers = await _authHeaders();
+    String url = '$baseUrl/student/attendance/detailed?course_id=$courseId';
+    if (sessionType != null) url += '&session_type=$sessionType';
+
+    final res = await http.get(Uri.parse(url), headers: headers);
+    return jsonDecode(res.body);
+  }
+
+  // أضف هذه الدالة
+
+  static Future<Map> getDoctorCourseAssignment(int courseId) async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/doctor/course-assignment?course_id=$courseId'),
+      headers: headers,
+    );
+    return jsonDecode(res.body);
   }
 }

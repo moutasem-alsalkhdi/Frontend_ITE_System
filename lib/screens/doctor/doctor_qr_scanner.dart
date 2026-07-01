@@ -75,7 +75,7 @@ class _DoctorQrScannerState extends State<DoctorQrScanner> {
         qrCode: qrCode,
         courseId: widget.courseId,
         sessionType: widget.sessionType,
-        totalSessions: widget.totalSessions,
+
         lectureNumber: widget.lectureNumber,
       );
       _appendLog('API response: ${res.toString()}');
@@ -135,7 +135,6 @@ class _DoctorQrScannerState extends State<DoctorQrScanner> {
       final res = await ApiService.recordAttendanceByQr(
         courseId: widget.courseId,
         sessionType: widget.sessionType,
-        totalSessions: widget.totalSessions,
         lectureNumber: widget.lectureNumber,
         qrCode: raw, // النص الممسوح من الـ QR
       );
