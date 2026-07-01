@@ -11,9 +11,11 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-
-# IntelliJ related
+.gradle/
 *.iml
+local.properties
+.idea/workspace.xml
+# IntelliJ related
 *.ipr
 *.iws
 .idea/

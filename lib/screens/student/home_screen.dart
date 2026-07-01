@@ -421,7 +421,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
     return _attendanceSummary.map<Widget>((item) {
       final attended = item['attended_sessions'] ?? 0;
+
       final total = (item['total_sessions'] ?? 0) > 0 ? item['total_sessions'] : attended;
+      debugPrint('المادة: ${item['course_name']} | إجمالي الجلسات (total): $total');
       final pct = total > 0 ? (attended / total).clamp(0.0, 1.0) : 0.0;
       final isLow = pct < 0.7;
       return Padding(

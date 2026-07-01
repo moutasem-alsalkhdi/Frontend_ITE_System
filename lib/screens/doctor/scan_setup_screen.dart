@@ -17,7 +17,7 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
   String? _courseName;
   String _sessionType = 'theory'; // theory or lab
   final _lectureNumberCtrl = TextEditingController();
-  final _totalSessionsCtrl = TextEditingController(text: '0');
+  final _totalSessionsCtrl = TextEditingController(text: '');
   bool _loading = true;
 
   @override

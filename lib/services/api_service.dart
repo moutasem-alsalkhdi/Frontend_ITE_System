@@ -18,8 +18,8 @@ class ApiService {
     // إذا تم تحديد host عبر --dart-define استخدمه مباشرة
     if (_host.isNotEmpty) return 'http://$_host:8000/api';
     // fallback تلقائي حسب المنصة
-    final defaultHost = '127.0.0.1';
-    //final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+    //final defaultHost = '127.0.0.1';
+    final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
     return 'http://$defaultHost:8000/api';
   }
 
