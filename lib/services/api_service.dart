@@ -386,20 +386,23 @@ class ApiService {
     final res = await http.Response.fromStream(response);
     return jsonDecode(res.body);
   }
+
   static Future<Map<String, dynamic>> getLectureAttendance({
     required int courseId,
     required String sessionType,
     required String lectureNumber,
+    String scope = 'all',
   }) async {
     final headers = await _authHeaders();
     final res = await http.get(
       Uri.parse(
-        '$baseUrl/doctor/attendance/list?course_id=$courseId&session_type=$sessionType&lecture_number=$lectureNumber',
+        '$baseUrl/doctor/attendance/list?course_id=$courseId&session_type=$sessionType&lecture_number=$lectureNumber&scope=$scope',
       ),
       headers: headers,
     );
     return jsonDecode(res.body);
   }
+
   static Future<Map<String, dynamic>> recordAttendanceByQr({
     required int courseId,
     required String sessionType,
@@ -443,7 +446,7 @@ class ApiService {
 
   static Future<Map> recordAttendance({
     required int sessionId,
-    required String universityId,
+    required String qrcode,
   }) async {
     final headers = await _authHeaders();
     final res = await http.post(
@@ -451,7 +454,7 @@ class ApiService {
       headers: headers,
       body: jsonEncode({
         'session_id': sessionId,
-        'university_id': universityId,
+        'qr_code': qrcode,
       }),
     );
     return jsonDecode(res.body);
@@ -479,6 +482,15 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<Map<String, dynamic>> getStudentAttendance() async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/student/attendance'),
+      headers: headers,
+    );
+    return jsonDecode(res.body);
+  }
+
   // أضف هذه الدالة
 
   static Future<Map> getDoctorCourseAssignment(int courseId) async {
@@ -489,4 +501,5 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+
 }

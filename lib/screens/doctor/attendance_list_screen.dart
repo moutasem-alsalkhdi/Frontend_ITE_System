@@ -13,16 +13,25 @@ class AttendanceListScreen extends StatefulWidget {
 class _AttendanceListScreenState extends State<AttendanceListScreen> {
   List _students = [];
   bool _loading = true;
-
   int? _selectedCourseId;
-  String _selectedSessionType = 'theory';
+  String? _selectedSessionType ;
   String _lectureNumber = '1';
   List _courses = [];
+  int? _currentUserId;
+  List<String> _availableTypes = [];
+  String _scope = 'all';
 
+  @override
   @override
   void initState() {
     super.initState();
+    _loadCurrentUser();
     _loadCourses();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await ApiService.getUser();
+    setState(() => _currentUserId = user?['id']);
   }
 
   Future<void> _loadCourses() async {
@@ -37,14 +46,19 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
       _showSnack('اختر مادة من فضلك', AppColors.amber);
       return;
     }
+    if (_selectedSessionType == null) {
+      _showSnack('اختر نوع الجلسة (نظري/عملي)', AppColors.amber);
+      return;
+    }
 
     setState(() => _loading = true);
 
     try {
       final res = await ApiService.getLectureAttendance(
         courseId: _selectedCourseId!,
-        sessionType: _selectedSessionType,
+        sessionType: _selectedSessionType!,
         lectureNumber: _lectureNumber,
+        scope: _scope,
       );
 
       setState(() {
@@ -52,12 +66,26 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
         _loading = false;
       });
 
-      _showSnack(
-          'عدد الحاضرين: ${_students.length}', AppColors.teal);
+      _showSnack('عدد الحاضرين: ${_students.length}', AppColors.teal);
     } catch (_) {
       _showSnack('فشل تحميل قائمة الحضور', AppColors.failRed);
       setState(() => _loading = false);
     }
+  }
+
+  List<String> _computeAvailableTypes(dynamic course) {
+    if (course == null || _currentUserId == null) return [];
+    final assignments = course['staff_assignments'];
+    if (assignments == null) return [];
+
+    final types = <String>[];
+    final theoretical = (assignments['theoretical'] as List?) ?? [];
+    final practical = (assignments['theoretical'] as List?) ?? [];
+
+    if (theoretical.any((s) => s['id'] == _currentUserId)) types.add('theoretical');
+    if (practical.any((s) => s['id'] == _currentUserId)) types.add('practical');
+
+    return types;
   }
 
   void _showSnack(String msg, Color color) {
@@ -184,7 +212,14 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                   ),
                 );
               }).toList(),
-              onChanged: (v) => setState(() => _selectedCourseId = v),
+              onChanged: (v) {
+                final selected = _courses.firstWhere((c) => c['id'] == v, orElse: () => null);
+                setState(() {
+                  _selectedCourseId = v;
+                  _availableTypes = _computeAvailableTypes(selected);
+                  _selectedSessionType = _availableTypes.length == 1 ? _availableTypes.first : null;
+                });
+              },
               underline: const SizedBox(),
             ),
           ),
@@ -211,26 +246,25 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                       child: DropdownButton<String>(
                         isExpanded: true,
                         value: _selectedSessionType,
-                        items: [
-                          DropdownMenuItem(
-                            value: 'theory',
-                            child: Padding(
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('نظري'),
-                            ),
+                        hint: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            _availableTypes.isEmpty ? 'اختر مادة أولاً' : 'اختر النوع',
+                            style: const TextStyle(color: AppColors.textHint, fontSize: 12),
                           ),
-                          DropdownMenuItem(
-                            value: 'lab',
+                        ),
+                        items: _availableTypes.map((type) {
+                          return DropdownMenuItem(
+                            value: type,
                             child: Padding(
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('عملي'),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(type == 'theoretical' ? 'نظري' : 'عملي'),
                             ),
-                          ),
-                        ],
-                        onChanged: (v) => setState(
-                                () => _selectedSessionType = v ?? 'theory'),
+                          );
+                        }).toList(),
+                        onChanged: _availableTypes.isEmpty
+                            ? null
+                            : (v) => setState(() => _selectedSessionType = v),
                         underline: const SizedBox(),
                       ),
                     ),
@@ -270,6 +304,32 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          const SizedBox(height: 12),
+          const Text('عرض الحضور',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('جميع الطلاب'),
+                  selected: _scope == 'all',
+                  onSelected: (_) => setState(() => _scope = 'all'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('طلابي فقط'),
+                  selected: _scope == 'mine',
+                  onSelected: (_) => setState(() => _scope = 'mine'),
+                ),
+              ),
+            ],
+          ),
 
           // زر البحث
           SizedBox(

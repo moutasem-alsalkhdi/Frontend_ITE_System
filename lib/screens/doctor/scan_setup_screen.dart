@@ -14,17 +14,29 @@ class ScanSetupScreen extends StatefulWidget {
 class _ScanSetupScreenState extends State<ScanSetupScreen> {
   List _courses = [];
   int? _courseId;
+  int? _currentUserId;
   String? _courseName;
-  String _sessionType = 'theory'; // theory or lab
+  String? _sessionType;
+  List<String> _availableTypes = [];
   final _lectureNumberCtrl = TextEditingController();
-  final _totalSessionsCtrl = TextEditingController(text: '');
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadCourses();
+    _init();
   }
+
+  Future<void> _init() async {
+    await _loadCurrentUser(); // لازم يخلص أول قبل تحميل الكورسات
+    await _loadCourses();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await ApiService.getUser();
+    setState(() => _currentUserId = user?['id']);
+  }
+
 
   Future<void> _loadCourses() async {
     try {
@@ -48,6 +60,12 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
       );
       return;
     }
+    if (_sessionType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('اختر نوع الجلسة (نظري/عملي)'), backgroundColor: AppColors.failRed),
+      );
+      return;
+    }
     final lectureNumber = _lectureNumberCtrl.text.trim();
     if (lectureNumber.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,17 +74,14 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
       return;
     }
 
-    final totalSessions = int.tryParse(_totalSessionsCtrl.text) ?? 0;
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DoctorQrScanner(
+        builder: (_) => DoctorQrScannerScreen(
           courseId: _courseId!,
           courseName: _courseName ?? '',
-          sessionType: _sessionType,
+          sessionType: _sessionType!,
           lectureNumber: lectureNumber,
-          totalSessions: totalSessions,
         ),
       ),
     );
@@ -75,8 +90,22 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
   @override
   void dispose() {
     _lectureNumberCtrl.dispose();
-    _totalSessionsCtrl.dispose();
     super.dispose();
+  }
+
+  List<String> _computeAvailableTypes(dynamic course) {
+    if (course == null || _currentUserId == null) return [];
+    final assignments = course['staff_assignments'];
+    if (assignments == null) return [];
+
+    final types = <String>[];
+    final theoretical = (assignments['theoretical'] as List?) ?? [];
+    final practical = (assignments['practical'] as List?) ?? [];
+
+    if (theoretical.any((s) => s['id'] == _currentUserId)) types.add('theoretical');
+    if (practical.any((s) => s['id'] == _currentUserId)) types.add('practical');
+
+    return types;
   }
 
   @override
@@ -126,29 +155,48 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
                                 setState(() {
                                   _courseId = v;
                                   _courseName = selected != null ? selected['name'] : null;
+                                  _availableTypes = _computeAvailableTypes(selected);
+                                  // إذا نوع وحد بس متاح، اختاره تلقائياً. إذا الاثنين، خلي المستخدم يختار.
+                                  _sessionType = _availableTypes.length == 1 ? _availableTypes.first : null;
                                 });
                               },
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        const Text('نوع الجلسة', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            ChoiceChip(
-                              label: const Text('نظري'),
-                              selected: _sessionType == 'theory',
-                              onSelected: (_) => setState(() => _sessionType = 'theory'),
+                        if (_availableTypes.length > 1) ...[
+                          const SizedBox(height: 16),
+                          const Text('نوع الجلسة', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              ChoiceChip(
+                                label: const Text('نظري'),
+                                selected: _sessionType == 'theoretical',
+                                onSelected: (_) => setState(() => _sessionType = 'theoretical'),
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: const Text('عملي'),
+                                selected: _sessionType == 'practical',
+                                onSelected: (_) => setState(() => _sessionType = 'practical'),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (_availableTypes.length == 1) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.teal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            const SizedBox(width: 8),
-                            ChoiceChip(
-                              label: const Text('عملي'),
-                              selected: _sessionType == 'lab',
-                              onSelected: (_) => setState(() => _sessionType = 'lab'),
+                            child: Text(
+                              'نوع الجلسة: ${_availableTypes.first == 'theoretical' ? 'نظري' : 'عملي'}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         TextField(
                           controller: _lectureNumberCtrl,
@@ -159,16 +207,7 @@ class _ScanSetupScreenState extends State<ScanSetupScreen> {
                             fillColor: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _totalSessionsCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'إجمالي عدد المحاضرات للمقرر (اختياري)',
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                        ),
+
 
                         const Spacer(), // الآن سيعمل الـ Spacer بأمان كامل
                         const SizedBox(height: 24),
