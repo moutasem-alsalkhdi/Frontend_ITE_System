@@ -18,8 +18,8 @@ class ApiService {
     // إذا تم تحديد host عبر --dart-define استخدمه مباشرة
     if (_host.isNotEmpty) return 'http://$_host:8000/api';
     // fallback تلقائي حسب المنصة
-    final defaultHost = '127.0.0.1';
-    //final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+    //final defaultHost = '127.0.0.1';
+    final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
     return 'http://$defaultHost:8000/api';
   }
 
@@ -119,6 +119,15 @@ class ApiService {
     final res = await http.get(
       Uri.parse('$baseUrl/student/profile'),
       headers: headers,
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> getCurrentSemester() async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+        Uri.parse('$baseUrl/admin/semester/current'),
+     headers: headers,
     );
     return jsonDecode(res.body);
   }
@@ -294,6 +303,14 @@ class ApiService {
     } else {
       throw Exception('Failed to load courses');
     }
+  }
+  static Future<Map<String, dynamic>> getMyEnrolledCourses() async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/student/my-enrolled-courses'),
+      headers: headers,
+    );
+    return jsonDecode(res.body);
   }
 
   static Future<dynamic> getEligibleCourses(String requestType) async {

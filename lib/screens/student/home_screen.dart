@@ -8,6 +8,7 @@ import 'announcements_screen.dart';
 import 'profile_screen.dart';
 import 'schedule_screen.dart';
 import 'qr_screen.dart';
+import 'attendance_courses_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -16,11 +17,13 @@ class StudentHomeScreen extends StatefulWidget {
   State<StudentHomeScreen> createState() => _StudentHomeScreenState();
 }
 
+String _currentSemesterText = 'الفصل الدراسي';
+String _currentAcademicYear = '';
+
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   int _currentIndex = 0;
   Map<String, dynamic>? _user;
   double _balance = 0;
-  List _attendanceSummary = [];
   int _unreadCount = 0;
   bool _loading = true;
 
@@ -42,17 +45,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Future<void> _loadData() async {
     try {
-      final user = await ApiService.getUser();
+      final user = await ApiService.getProfile();
       final balanceRes = await ApiService.getWalletBalance();
-      final attendRes = await ApiService.getAttendance();
       final notifRes = await ApiService.getNotifications();
+      final semesterRes = await ApiService.getCurrentSemester();
 
       setState(() {
-        _user = user;
+        _user = user['data'];
         _balance = (balanceRes['data']?['balance'] ?? 0).toDouble();
-        _attendanceSummary =
-            attendRes['attendance_summary'] ?? [];
         _unreadCount = notifRes['unread_count'] ?? 0;
+
+        if (semesterRes['status'] == 'success') {
+          _currentAcademicYear = semesterRes['data']['academic_year'] ?? '';
+          _currentSemesterText = semesterRes['data']['semester_text'] ?? '';
+        }
+
         _loading = false;
       });
     } catch (_) {
@@ -241,8 +248,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       style: TextStyle(
                           color: Colors.white.withOpacity(0.6), fontSize: 11),
                     ),
-                    const Text(
-                      'الفصل الثاني | 2025-2026',
+                    Text(
+                      ' $_currentSemesterText | $_currentAcademicYear',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -404,93 +411,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       }).toList(),
     );
   }
-
   List<Widget> _buildAttendanceCards() {
-    if (_attendanceSummary.isEmpty) {
-      return [
-        const AppCard(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('لا توجد بيانات حضور بعد',
-                  style: TextStyle(color: AppColors.textHint)),
-            ),
-          ),
-        )
-      ];
-    }
-    return _attendanceSummary.map<Widget>((item) {
-      final attended = item['attended_sessions'] ?? 0;
-
-      final total = (item['total_sessions'] ?? 0) > 0 ? item['total_sessions'] : attended;
-      final pct = total > 0 ? (attended / total).clamp(0.0, 1.0) : 0.0;
-      final isLow = pct < 0.7;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(item['course_name'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isLow
-                          ? AppColors.failBg
-                          : AppColors.passBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      isLow ? 'تحذير غياب' : 'منتظم',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isLow
-                              ? AppColors.failRed
-                              : AppColors.passGreen),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: pct.toDouble(),
-                  backgroundColor: AppColors.background,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                      isLow ? AppColors.failRed : AppColors.teal),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('$attended / $total محاضرة',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                  Text(
-                    '${(pct * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isLow ? AppColors.failRed : AppColors.teal),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return [
+      AppCard(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AttendanceCoursesScreen()),
         ),
-      );
-    }).toList();
+        child: Row(
+          children: const [
+            Icon(Icons.fact_check_rounded, color: AppColors.teal),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('عرض سجل الحضور الكامل',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textHint),
+          ],
+        ),
+      ),
+    ];
   }
 }
