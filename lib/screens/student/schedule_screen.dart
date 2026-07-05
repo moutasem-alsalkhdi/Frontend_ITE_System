@@ -2,12 +2,36 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_card.dart';
+import 'dart:io';
+import 'package:photo_view/photo_view.dart';
+import 'package:http/http.dart' as http;
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
   State<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+class FullScreenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  const FullScreenImageViewer({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: PhotoView(
+        imageProvider: NetworkImage(imageUrl),
+        minScale: PhotoViewComputedScale.contained,
+        maxScale: PhotoViewComputedScale.covered * 3,
+        backgroundDecoration: const BoxDecoration(color: Colors.black),
+      ),
+    );
+  }
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
@@ -39,6 +63,42 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       });
     } catch (_) {
       setState(() => _loading = false);
+    }
+  }
+  Future<void> _downloadScheduleImage(String imageUrl) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode != 200) {
+        throw Exception('فشل تحميل الصورة');
+      }
+
+      final downloadsDir = Directory('/storage/emulated/0/Download/AttendanceApp');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      final fileName = 'schedule_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filePath = '${downloadsDir.path}/$fileName';
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم حفظ الصورة: $filePath', textDirection: TextDirection.rtl),
+            backgroundColor: AppColors.teal,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('فشل تنزيل الصورة', textDirection: TextDirection.rtl),
+            backgroundColor: AppColors.failRed,
+          ),
+        );
+      }
     }
   }
 
@@ -226,49 +286,77 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           // صورة الجدول
           if (imageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-              child: Image.network(
-                imageUrl,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    height: 200,
-                    color: AppColors.background,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.teal,
-                        value: progress.expectedTotalBytes != null
-                            ? progress.cumulativeBytesLoaded /
-                            progress.expectedTotalBytes!
-                            : null,
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenImageViewer(imageUrl: imageUrl),
                       ),
                     ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
-                  height: 160,
-                  color: AppColors.background,
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image_outlined,
-                            color: AppColors.textHint, size: 40),
-                        SizedBox(height: 8),
-                        Text('تعذر تحميل الصورة',
-                            style: TextStyle(
-                                color: AppColors.textHint, fontSize: 12)),
-                      ],
+                    child: Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (_, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 200,
+                          color: AppColors.background,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.teal,
+                              value: progress.expectedTotalBytes != null
+                                  ? progress.cumulativeBytesLoaded /
+                                  progress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 160,
+                        color: AppColors.background,
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image_outlined,
+                                  color: AppColors.textHint, size: 40),
+                              SizedBox(height: 8),
+                              Text('تعذر تحميل الصورة',
+                                  style: TextStyle(
+                                      color: AppColors.textHint, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () => _downloadScheduleImage(imageUrl),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.download_rounded,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              ],
             )
           else
             Container(

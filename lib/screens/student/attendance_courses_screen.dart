@@ -28,8 +28,10 @@ class _AttendanceCoursesScreenState extends State<AttendanceCoursesScreen> {
       final coursesRes = await ApiService.getMyEnrolledCourses();
       final myCourses = coursesRes['data'] ?? [];
 
+
       // 2. إحصائيات الحضور المتوفرة (ممكن تكون فاضية لو ما فيه جلسات منتهية بعد)
       final attendRes = await ApiService.getAttendance();
+      print('RAW ATTENDANCE: ${attendRes['attendance_summary']}');
       final attendanceRaw = attendRes['attendance_summary'] ?? [];
       final attendanceByCourse = _groupByCourse(attendanceRaw);
 
@@ -43,6 +45,7 @@ class _AttendanceCoursesScreenState extends State<AttendanceCoursesScreen> {
               'course_name': c['name'],
               'types': <String, Map<String, int>>{},
             },
+
           );
           return stats;
         }).toList();

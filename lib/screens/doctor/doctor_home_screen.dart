@@ -8,7 +8,7 @@ import 'lecture_upload_screen.dart';
 import 'create_announcement_screen.dart';
 import 'attendance_list_screen.dart';
 import 'scan_setup_screen.dart';
-
+import 'doctor_lecture_courses_screen.dart';
 class DoctorHomeScreen extends StatefulWidget {
   const DoctorHomeScreen({super.key});
 
@@ -232,8 +232,10 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         'label': 'ملفاتي',
         'color': const Color(0xFFEEEDFE),
         'iconColor': const Color(0xFF534AB7),
-        'action': () =>
-            _showSnack('قريباً: مكتبة الملفات الخاصة بك', AppColors.amber),
+        'action': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DoctorLectureCoursesScreen()),
+        ),
       },
     ];
 

@@ -136,7 +136,8 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                   Text('محاضرة ${r['lecture_number']}',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 3),
-                  Text('د. ${r['doctor_name'] ?? '—'}',
+                  Text('${r['the_role']=='doctor' ? 'د.' : 'م.'}  ${r['scanned_by'] ?? '—'}',
+
                       style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
                 ],
               ),

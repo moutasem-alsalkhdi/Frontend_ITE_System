@@ -3,6 +3,9 @@ import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 class ApiService {
   /// عنوان السيرفر — عدّله مرة واحدة هنا فقط:
@@ -18,8 +21,8 @@ class ApiService {
     // إذا تم تحديد host عبر --dart-define استخدمه مباشرة
     if (_host.isNotEmpty) return 'http://$_host:8000/api';
     // fallback تلقائي حسب المنصة
-    //final defaultHost = '127.0.0.1';
-    final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+    final defaultHost = '127.0.0.1';
+    // final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
     return 'http://$defaultHost:8000/api';
   }
 
@@ -274,10 +277,55 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> getLectureFiles(int courseId) async {
+  static Future<Map<String, dynamic>> getLectureFiles({
+    required int courseId,
+    String? uploaderType, // 'doctor' أو 'volunteer'
+  }) async {
+    final headers = await _authHeaders();
+    String url = '$baseUrl/LectureFile?course_id=$courseId';
+    if (uploaderType != null) url += '&uploader_type=$uploaderType';
+    final res = await http.get(Uri.parse(url), headers: headers);
+    return jsonDecode(res.body);
+  }
+
+  static Future<void> downloadAndOpenLectureFile(int id, String fileName) async {
     final headers = await _authHeaders();
     final res = await http.get(
-      Uri.parse('$baseUrl/LectureFile?course_id=$courseId'),
+      Uri.parse('$baseUrl/LectureFile/download/$id'),
+      headers: headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception('فشل تحميل الملف');
+    }
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/$fileName';
+    final file = File(filePath);
+    await file.writeAsBytes(res.bodyBytes);
+    await OpenFile.open(filePath); // يفتح بأي تطبيق مناسب — pdf viewer, Word, إلخ
+  }
+
+  static Future<String> saveLectureFileToDevice(int id, String fileName) async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/LectureFile/download/$id'),
+      headers: headers,
+    );
+    if (res.statusCode != 200) throw Exception('فشل تحميل الملف');
+
+    // مسار عام يظهر بمدير الملفات (Android فقط)
+    final downloadsDir = Directory('/storage/emulated/0/Download/ITE_App');
+    if (!await downloadsDir.exists()) {
+      await downloadsDir.create(recursive: true);
+    }
+    final filePath = '${downloadsDir.path}/$fileName';
+    final file = File(filePath);
+    await file.writeAsBytes(res.bodyBytes);
+    return filePath;
+  }
+  static Future<Map<String, dynamic>> deleteLectureFile(int id) async {
+    final headers = await _authHeaders();
+    final res = await http.delete(
+      Uri.parse('$baseUrl/LectureFile/$id'),
       headers: headers,
     );
     return jsonDecode(res.body);
@@ -291,6 +339,7 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+
   static Future<Map<String, dynamic>> getMyCourses() async {
     final headers = await _authHeaders();
     final res = await http.get(
@@ -304,6 +353,7 @@ class ApiService {
       throw Exception('Failed to load courses');
     }
   }
+
   static Future<Map<String, dynamic>> getMyEnrolledCourses() async {
     final headers = await _authHeaders();
     final res = await http.get(
@@ -317,6 +367,15 @@ class ApiService {
     final headers = await _authHeaders();
     final res = await http.get(
       Uri.parse('$baseUrl/student/eligible-courses?request_type=$requestType'),
+      headers: headers,
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> getSemesterCourses() async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/student/getSemesterCourses'),
       headers: headers,
     );
     return jsonDecode(res.body);

@@ -9,6 +9,8 @@ import 'profile_screen.dart';
 import 'schedule_screen.dart';
 import 'qr_screen.dart';
 import 'attendance_courses_screen.dart';
+import 'volunteer_lecture_upload_screen.dart';
+import 'lecture_courses_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -363,6 +365,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       {'icon': Icons.article_rounded, 'title': 'طلباتي', 'sub': 'الخدمات الجامعية', 'color': const Color(0xFFE6F1FB), 'iconColor': const Color(0xFF185FA5), 'index': 2},
       {'icon': Icons.menu_book_rounded, 'title': 'المحاضرات', 'sub': 'ملفات المواد', 'color': const Color(0xFFEEEDFE), 'iconColor': const Color(0xFF534AB7), 'index': -2},
     ];
+    if (_user?['role'] == 'volunteer')
+    {items.add(
+      {'icon': Icons.upload_file_rounded, 'title': 'رفع محاضرة','sub': 'إضافة محاضرة من الفريق التطوعي', 'color': const Color(0xFFFFE8E8), 'iconColor': const Color(0xFFB33A3A), 'index': -4,});
+    }
 
     return GridView.count(
       crossAxisCount: 2,
@@ -370,9 +376,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.6,
+      childAspectRatio: 1.35,
       children: items.map((item) {
         return AppCard(
+          padding: const EdgeInsets.all(10),
           onTap: () {
             final idx = item['index'] as int;
             if (idx >= 0) {
@@ -380,31 +387,40 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             } else if (idx == -3) {
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ScheduleScreen()));
-            }
+            } else if (idx == -4) {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const VolunteerLectureUploadScreen()));
+            } else if (idx == -2) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const LectureCoursesScreen()));
+        }
+
           },
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: item['color'] as Color,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(item['icon'] as IconData,
-                    color: item['iconColor'] as Color, size: 20),
+                    color: item['iconColor'] as Color, size: 18),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(item['title'] as String,
                   style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               Text(item['sub'] as String,
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textHint)),
+                      fontSize: 10, color: AppColors.textHint),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
             ],
           ),
         );
