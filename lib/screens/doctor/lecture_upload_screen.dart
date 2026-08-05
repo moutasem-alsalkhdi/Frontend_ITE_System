@@ -14,12 +14,11 @@ class LectureUploadScreen extends StatefulWidget {
 class _LectureUploadScreenState extends State<LectureUploadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _academicYearController = TextEditingController();
+  String _academicYearController = '';
 
   int? _selectedCourseId;
   PlatformFile? _selectedFile;
   List _courses = [];
-  bool _loading = false;
   bool _uploadingFile = false;
 
   @override
@@ -31,7 +30,11 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
   Future<void> _loadCourses() async {
     try {
       final res = await ApiService.getMyCourses();
+      final semesterRes = await ApiService.getCurrentSemester();
       setState(() => _courses = res['data'] ?? []);
+      if (semesterRes['status'] == 'success') {
+        _academicYearController = semesterRes['data']['academic_year'] ?? '';
+      }
     } catch (_) {
       _showSnack('فشل تحميل المواد', AppColors.failRed);
     }
@@ -72,7 +75,7 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
       final res = await ApiService.uploadLectureFile(
         courseId: _selectedCourseId!,
         title: _titleController.text.trim(),
-        academicYear: _academicYearController.text.trim(),
+        academicYear: _academicYearController,
         file: _selectedFile!,
       );
 
@@ -92,7 +95,6 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
   void _resetForm() {
     _formKey.currentState?.reset();
     _titleController.clear();
-    _academicYearController.clear();
     setState(() {
       _selectedCourseId = null;
       _selectedFile = null;
@@ -111,7 +113,6 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _academicYearController.dispose();
     super.dispose();
   }
 
@@ -172,22 +173,6 @@ class _LectureUploadScreenState extends State<LectureUploadScreen> {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textSecondary)),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _academicYearController,
-                        textDirection: TextDirection.rtl,
-                        decoration: InputDecoration(
-                          hintText: 'مثال: 2025-2026',
-                          hintStyle: const TextStyle(color: AppColors.textHint),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        validator: (v) => v?.isEmpty ?? true ? 'الحقل مطلوب' : null,
-                      ),
                       const SizedBox(height: 18),
 
                       // اختيار الملف

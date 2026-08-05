@@ -22,7 +22,7 @@ class ApiService {
     if (_host.isNotEmpty) return 'http://$_host:8000/api';
     // fallback تلقائي حسب المنصة
     final defaultHost = '127.0.0.1';
-    // final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+    //final defaultHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
     return 'http://$defaultHost:8000/api';
   }
 
@@ -129,7 +129,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getCurrentSemester() async {
     final headers = await _authHeaders();
     final res = await http.get(
-        Uri.parse('$baseUrl/admin/semester/current'),
+        Uri.parse('$baseUrl/semester/current'),
      headers: headers,
     );
     return jsonDecode(res.body);
@@ -277,12 +277,23 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> getLectureFiles({
+  static Future<Map<String, dynamic>> getCourseLectures({
     required int courseId,
     String? uploaderType, // 'doctor' أو 'volunteer'
   }) async {
     final headers = await _authHeaders();
-    String url = '$baseUrl/LectureFile?course_id=$courseId';
+    String url = '$baseUrl/LectureFile/getCourseLectures?course_id=$courseId';
+    if (uploaderType != null) url += '&uploader_type=$uploaderType';
+    final res = await http.get(Uri.parse(url), headers: headers);
+    return jsonDecode(res.body);
+  }
+
+  static Future<Map<String, dynamic>> getArchivedFiles({
+    required int courseId,
+    String? uploaderType, // 'doctor' أو 'volunteer'
+  }) async {
+    final headers = await _authHeaders();
+    String url = '$baseUrl/LectureFile/archived?course_id=$courseId';
     if (uploaderType != null) url += '&uploader_type=$uploaderType';
     final res = await http.get(Uri.parse(url), headers: headers);
     return jsonDecode(res.body);
@@ -331,19 +342,19 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> getCourses() async {
-    final headers = await _authHeaders();
-    final res = await http.get(
-      Uri.parse('$baseUrl/courses/info'),
-      headers: headers,
-    );
-    return jsonDecode(res.body);
-  }
+  // static Future<Map<String, dynamic>> getCourses() async {
+  //   final headers = await _authHeaders();
+  //   final res = await http.get(
+  //     Uri.parse('$baseUrl/courses/info'),
+  //     headers: headers,
+  //   );
+  //   return jsonDecode(res.body);
+  // }
 
   static Future<Map<String, dynamic>> getMyCourses() async {
     final headers = await _authHeaders();
     final res = await http.get(
-        Uri.parse('$baseUrl/courses/assignments'),
+        Uri.parse('$baseUrl/doctor/courses/assignments'),
       headers: headers,
     );
 
@@ -378,6 +389,14 @@ class ApiService {
       Uri.parse('$baseUrl/student/getSemesterCourses'),
       headers: headers,
     );
+    return jsonDecode(res.body);
+  }
+  
+  static Future<Map<String, dynamic>> getCoursesByYear(int yearOfStudy, {String? department}) async {
+    final headers = await _authHeaders();
+    String url = '$baseUrl/student/courses-by-year?year_of_study=$yearOfStudy';
+    if (department != null) url += '&department=$department';
+    final res = await http.get(Uri.parse(url), headers: headers);
     return jsonDecode(res.body);
   }
 

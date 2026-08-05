@@ -11,6 +11,7 @@ import 'qr_screen.dart';
 import 'attendance_courses_screen.dart';
 import 'volunteer_lecture_upload_screen.dart';
 import 'lecture_courses_screen.dart';
+import 'repository_years_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -364,6 +365,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       {'icon': Icons.calendar_today_rounded, 'title': 'الجدول', 'sub': 'جدول الدوام', 'color': const Color(0xFFFAEEDA), 'iconColor': AppColors.pendingText, 'index': -3},
       {'icon': Icons.article_rounded, 'title': 'طلباتي', 'sub': 'الخدمات الجامعية', 'color': const Color(0xFFE6F1FB), 'iconColor': const Color(0xFF185FA5), 'index': 2},
       {'icon': Icons.menu_book_rounded, 'title': 'المحاضرات', 'sub': 'ملفات المواد', 'color': const Color(0xFFEEEDFE), 'iconColor': const Color(0xFF534AB7), 'index': -2},
+      {'icon': Icons.warehouse_rounded, 'title': 'مستودع المحاضرات', 'sub': 'كل السنوات والمواد', 'color': const Color(0xFFFFF3E0), 'iconColor': const Color(0xFFE65100), 'index': -5},
     ];
     if (_user?['role'] == 'volunteer')
     {items.add(
@@ -387,6 +389,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             } else if (idx == -3) {
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ScheduleScreen()));
+            } else if (idx == -5) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const RepositoryYearsScreen()));
             } else if (idx == -4) {
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const VolunteerLectureUploadScreen()));

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_card.dart';
+import 'student/archived_years_screen.dart';
 
 class LectureFilesScreen extends StatefulWidget {
   final int courseId;
@@ -38,8 +39,8 @@ class _LectureFilesScreenState extends State<LectureFilesScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-       _user = await ApiService.getUser();
-      final res = await ApiService.getLectureFiles(
+      _user = await ApiService.getUser();
+      final res = await ApiService.getCourseLectures(
         courseId: widget.courseId,
         uploaderType: widget.uploaderType,
       );
@@ -128,24 +129,48 @@ class _LectureFilesScreenState extends State<LectureFilesScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(title: Text(widget.screenTitle)),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
-            : _files.isEmpty
-            ? const Center(child: Text('لا توجد ملفات بعد', style: TextStyle(color: AppColors.textHint)))
-            : RefreshIndicator(
-          onRefresh: _load,
-          color: AppColors.teal,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: _files.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, i) => _buildFileCard(_files[i]),
-          ),
+        body: Stack(
+          children: [
+            _loading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+                : _files.isEmpty
+                ? const Center(child: Text('لا توجد ملفات بعد', style: TextStyle(color: AppColors.textHint)))
+                : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.teal,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _files.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) => _buildFileCard(_files[i]),
+              ),
+            ),
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: FloatingActionButton(
+                heroTag: 'archive_fab',
+                backgroundColor: AppColors.navy,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ArchivedYearsScreen(
+                        courseId: widget.courseId,
+                        courseName: widget.courseName,
+                        uploaderType: widget.uploaderType,
+                      ),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.archive_rounded, color: Colors.white),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-
 
   Widget _buildFileCard(Map f) {
     final isDownloading = _downloadingId == f['id'];
@@ -160,39 +185,39 @@ class _LectureFilesScreenState extends State<LectureFilesScreen> {
     }
     final hasDeletePermission = _canDeleteFile(f);
     return GestureDetector(
-        onTap: isDownloading ? null : () => _openFile(f),
-        child: AppCard(
-          child: Row(
-            children: [
-              const Icon(Icons.insert_drive_file_outlined, color: AppColors.teal, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(f['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    const SizedBox(height: 3),
-                    Text(f['uploader']?['name'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
-                  ],
-                ),
+      onTap: isDownloading ? null : () => _openFile(f),
+      child: AppCard(
+        child: Row(
+          children: [
+            const Icon(Icons.insert_drive_file_outlined, color: AppColors.teal, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(f['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 3),
+                  Text(f['uploader']?['name'] ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+                ],
               ),
-              if (isDownloading)
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              else ...[
-                if (hasDeletePermission)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, color: AppColors.failRed, size: 20),
-                    tooltip: 'حذف نهائي',
-                    onPressed: () => _deleteFile(f['id']),
-                  ),
+            ),
+            if (isDownloading)
+              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            else ...[
+              if (hasDeletePermission)
                 IconButton(
-                  icon: const Icon(Icons.download_rounded, size: 20),
-                  tooltip: 'حفظ في الجهاز',
-                  onPressed: () => _saveFile(f),
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.failRed, size: 20),
+                  tooltip: 'حذف نهائي',
+                  onPressed: () => _deleteFile(f['id']),
                 ),
+              IconButton(
+                icon: const Icon(Icons.download_rounded, size: 20),
+                tooltip: 'حفظ في الجهاز',
+                onPressed: () => _saveFile(f),
+              ),
+            ],
           ],
-        ],
-          ),
+        ),
       ),
     );
   }

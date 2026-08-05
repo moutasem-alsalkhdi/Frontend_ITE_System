@@ -245,11 +245,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.7,
+      childAspectRatio: 1.35,
       children: tools.map((t) {
         return AppCard(
+          padding: const EdgeInsets.all(10),
           onTap: t['action'] as VoidCallback,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(

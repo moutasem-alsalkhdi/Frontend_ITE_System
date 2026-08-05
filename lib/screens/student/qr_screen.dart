@@ -32,7 +32,7 @@ class _QrScreenState extends State<QrScreen>
   Future<void> _loadUser() async {
     try {
       // طلب بيانات الملف الشخصي مباشرة من الـ API الحية بدلاً من الكاش المحلي
-      final response = await ApiService.getProfile(); // أو اسم دالة جلب البروفايل لديك في ApiService
+      final response = await ApiService.getProfile();
 
       setState(() {
         _user = response;
