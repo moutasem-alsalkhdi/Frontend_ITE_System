@@ -14,14 +14,16 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   List _students = [];
   bool _loading = true;
   int? _selectedCourseId;
-  String? _selectedSessionType ;
-  String _lectureNumber = '1';
+  String? _selectedSessionType;
+  String? _lectureNumber;
   List _courses = [];
   int? _currentUserId;
   List<String> _availableTypes = [];
   String _scope = 'all';
+  Map<String, int> _staffCountByType = {};
+  List<String> _lectureNumbers = [];
+  bool _loadingLectureNumbers = false;
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -50,6 +52,10 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
       _showSnack('اختر نوع الجلسة (نظري/عملي)', AppColors.amber);
       return;
     }
+    if (_lectureNumber == null) {
+      _showSnack('اختر رقم المحاضرة', AppColors.amber);
+      return;
+    }
 
     setState(() => _loading = true);
 
@@ -57,7 +63,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
       final res = await ApiService.getLectureAttendance(
         courseId: _selectedCourseId!,
         sessionType: _selectedSessionType!,
-        lectureNumber: _lectureNumber,
+        lectureNumber: _lectureNumber!,
         scope: _scope,
       );
 
@@ -73,19 +79,73 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
     }
   }
 
+  Future<void> _loadLectureNumbers() async {
+    if (_selectedCourseId == null || _selectedSessionType == null) {
+      setState(() {
+        _lectureNumbers = [];
+        _lectureNumber = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingLectureNumbers = true;
+      _lectureNumbers = [];
+      _lectureNumber = null;
+    });
+
+    try {
+      final res = await ApiService.getLectureNumbers(
+        courseId: _selectedCourseId!,
+        sessionType: _selectedSessionType!,
+      );
+      final numbers = ((res['lecture_numbers'] ?? []) as List)
+          .map((e) => e.toString())
+          .toList();
+      setState(() {
+        _lectureNumbers = numbers;
+        _lectureNumber = numbers.length == 1 ? numbers.first : null;
+        _loadingLectureNumbers = false;
+      });
+    } catch (_) {
+      setState(() => _loadingLectureNumbers = false);
+      _showSnack('فشل تحميل أرقام المحاضرات', AppColors.failRed);
+    }
+  }
+
   List<String> _computeAvailableTypes(dynamic course) {
-    if (course == null || _currentUserId == null) return [];
+    if (course == null || _currentUserId == null) {
+      _staffCountByType = {};
+      return [];
+    }
     final assignments = course['staff_assignments'];
-    if (assignments == null) return [];
+    if (assignments == null) {
+      _staffCountByType = {};
+      return [];
+    }
 
     final types = <String>[];
     final theoretical = (assignments['theoretical'] as List?) ?? [];
-    final practical = (assignments['theoretical'] as List?) ?? [];
+    final practical = (assignments['practical'] as List?) ?? [];
+
+    _staffCountByType = {
+      'theoretical': theoretical.length,
+      'practical': practical.length,
+    };
 
     if (theoretical.any((s) => s['id'] == _currentUserId)) types.add('theoretical');
     if (practical.any((s) => s['id'] == _currentUserId)) types.add('practical');
 
     return types;
+  }
+
+  // إذا كان المدرس الحالي هو المدرس الوحيد المسند لنوع الجلسة المختار
+  // (نظري أو عملي) داخل القسم، فلا داعي لعرض خياري "طلابي" و"جميع الطلاب"
+  // لأن النتيجة ستكون واحدة في الحالتين.
+  bool get _isOnlyInstructorForSelectedType {
+    if (_selectedSessionType == null) return false;
+    final count = _staffCountByType[_selectedSessionType] ?? 0;
+    return count <= 1;
   }
 
   void _showSnack(String msg, Color color) {
@@ -218,118 +278,147 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
                   _selectedCourseId = v;
                   _availableTypes = _computeAvailableTypes(selected);
                   _selectedSessionType = _availableTypes.length == 1 ? _availableTypes.first : null;
+                  if (_isOnlyInstructorForSelectedType) _scope = 'all';
                 });
+                _loadLectureNumbers();
               },
               underline: const SizedBox(),
             ),
           ),
           const SizedBox(height: 12),
 
-          // نوع الجلسة والمحاضرة
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('النوع',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary)),
-                    const SizedBox(height: 6),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: _selectedSessionType,
-                        hint: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            _availableTypes.isEmpty ? 'اختر مادة أولاً' : 'اختر النوع',
-                            style: const TextStyle(color: AppColors.textHint, fontSize: 12),
-                          ),
-                        ),
-                        items: _availableTypes.map((type) {
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(type == 'theoretical' ? 'نظري' : 'عملي'),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: _availableTypes.isEmpty
-                            ? null
-                            : (v) => setState(() => _selectedSessionType = v),
-                        underline: const SizedBox(),
-                      ),
-                    ),
-                  ],
-                ),
+          // نوع الجلسة: تُعرض فقط إذا كان الدكتور مسجّلاً بأكثر من نوع لهذه المادة
+          if (_availableTypes.length > 1) ...[
+            const Text('النوع',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('المحاضرة #',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary)),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      initialValue: _lectureNumber,
-                      textDirection: TextDirection.rtl,
-                      onChanged: (v) =>
-                          setState(() => _lectureNumber = v),
-                      decoration: InputDecoration(
-                        hintText: '1',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                          const BorderSide(color: AppColors.border),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                      ),
-                    ),
-                  ],
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedSessionType,
+                hint: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'اختر النوع',
+                    style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+                  ),
                 ),
+                items: _availableTypes.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(type == 'theoretical' ? 'نظري' : 'عملي'),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedSessionType = v;
+                    if (_isOnlyInstructorForSelectedType) _scope = 'all';
+                  });
+                  _loadLectureNumbers();
+                },
+                underline: const SizedBox(),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const SizedBox(height: 12),
-          const Text('عرض الحضور',
+            ),
+            const SizedBox(height: 12),
+          ] else if (_availableTypes.length == 1) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.teal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'نوع الجلسة: ${_availableTypes.first == 'theoretical' ? 'نظري' : 'عملي'}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // رقم المحاضرة: اختيار من الأرقام الموجودة فعلياً في قاعدة البيانات
+          const Text('المحاضرة #',
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary)),
           const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('جميع الطلاب'),
-                  selected: _scope == 'all',
-                  onSelected: (_) => setState(() => _scope = 'all'),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: _lectureNumber,
+              hint: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  _loadingLectureNumbers
+                      ? 'جاري التحميل...'
+                      : (_selectedSessionType == null
+                      ? 'اختر نوع الجلسة أولاً'
+                      : _lectureNumbers.isEmpty
+                      ? 'لا توجد محاضرات مسجّلة'
+                      : 'اختر رقم المحاضرة'),
+                  style: const TextStyle(color: AppColors.textHint, fontSize: 12),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('طلابي فقط'),
-                  selected: _scope == 'mine',
-                  onSelected: (_) => setState(() => _scope = 'mine'),
-                ),
-              ),
-            ],
+              items: _lectureNumbers.map((num) {
+                return DropdownMenuItem(
+                  value: num,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(num),
+                  ),
+                );
+              }).toList(),
+              onChanged: _lectureNumbers.isEmpty
+                  ? null
+                  : (v) => setState(() => _lectureNumber = v),
+              underline: const SizedBox(),
+            ),
           ),
+          const SizedBox(height: 12),
+          if (!_isOnlyInstructorForSelectedType) ...[
+            const SizedBox(height: 12),
+            const Text('عرض الحضور',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('جميع الطلاب'),
+                    selected: _scope == 'all',
+                    onSelected: (_) => setState(() => _scope = 'all'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('طلابي فقط'),
+                    selected: _scope == 'mine',
+                    onSelected: (_) => setState(() => _scope = 'mine'),
+                  ),
+                ),
+              ],
+            ),
+          ],
 
           // زر البحث
           SizedBox(

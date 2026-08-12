@@ -497,6 +497,19 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+  static Future<Map<String, dynamic>> getLectureNumbers({
+    required int courseId,
+    required String sessionType,
+  }) async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse(
+        '$baseUrl/doctor/attendance/lecture-numbers?course_id=$courseId&session_type=$sessionType',
+      ),
+      headers: headers,
+    );
+    return jsonDecode(res.body);
+  }
 
   static Future<Map<String, dynamic>> recordAttendanceByQr({
     required int courseId,
