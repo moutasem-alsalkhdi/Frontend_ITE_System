@@ -56,6 +56,16 @@ class _RequestsScreenState extends State<RequestsScreen> {
     ));
   }
 
+  String _formatDeadline(dynamic dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr.toString()).toLocal();
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (_) {
+      return dateStr.toString();
+    }
+  }
+
   // ── عند الضغط على نوع الطلب ──
   void _onRequestTypeTapped(String type, String label) {
     if (type == 'grade_sheet' || type == 'life_cert') {
@@ -275,6 +285,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         final c = courses[i];
                         final id = c['id'] as int;
                         final isSelected = selectedCourseId == id;
+                        final deadline = c['deadline'];
                         return GestureDetector(
                           onTap: () =>
                               setSheet(() => selectedCourseId = id),
@@ -297,14 +308,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Text(c['name'] ?? '',
-                                      style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                          color: AppColors.textPrimary,
-                                          fontFamily: 'Cairo')),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(c['name'] ?? '',
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              color: AppColors.textPrimary,
+                                              fontFamily: 'Cairo')),
+                                      if (deadline != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'آخر موعد للتقديم: ${_formatDeadline(deadline)}',
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.failRed,
+                                              fontFamily: 'Cairo'),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                                 if (isSelected)
                                   const Icon(Icons.check_circle_rounded,
