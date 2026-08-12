@@ -42,8 +42,16 @@ class _ArchivedFilesListScreenState extends State<ArchivedFilesListScreen> {
       final fileName = '${f['title']}.$ext';
       final path = await ApiService.saveLectureFileToDevice(f['id'], fileName);
       _showSnack('تم الحفظ: $path', AppColors.teal);
-    } catch (_) {
-      _showSnack('فشل حفظ الملف', AppColors.failRed);
+    } catch (e) {
+      // 🎯 إظهار رسالة مخصصة إذا كان الملف محفوظاً مسبقاً في مجلد التنزيلات
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      if (msg == 'ALREADY_DOWNLOADED') {
+        _showSnack(
+            'هذا الملف تم تنزيله مسبقاً وهو محفوظ بالفعل في مجلد التنزيلات',
+            AppColors.amber);
+      } else {
+        _showSnack('فشل حفظ الملف', AppColors.failRed);
+      }
     } finally {
       setState(() => _downloadingId = null);
     }

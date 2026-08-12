@@ -12,6 +12,7 @@ import 'attendance_courses_screen.dart';
 import 'volunteer_lecture_upload_screen.dart';
 import 'lecture_courses_screen.dart';
 import 'repository_years_screen.dart';
+import 'add_volunteer_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -367,9 +368,24 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       {'icon': Icons.menu_book_rounded, 'title': 'المحاضرات', 'sub': 'ملفات المواد', 'color': const Color(0xFFEEEDFE), 'iconColor': const Color(0xFF534AB7), 'index': -2},
       {'icon': Icons.warehouse_rounded, 'title': 'مستودع المحاضرات', 'sub': 'كل السنوات والمواد', 'color': const Color(0xFFFFF3E0), 'iconColor': const Color(0xFFE65100), 'index': -5},
     ];
-    if (_user?['role'] == 'volunteer')
-    {items.add(
-      {'icon': Icons.upload_file_rounded, 'title': 'رفع محاضرة','sub': 'إضافة محاضرة من الفريق التطوعي', 'color': const Color(0xFFFFE8E8), 'iconColor': const Color(0xFFB33A3A), 'index': -4,});
+    if (_user?['role'] == 'volunteer') {
+      items.add({
+        'icon': Icons.upload_file_rounded,
+        'title': 'رفع محاضرة',
+        'sub': 'إضافة محاضرة من الفريق التطوعي',
+        'color': const Color(0xFFFFE8E8),
+        'iconColor': const Color(0xFFB33A3A),
+        'index': -4,
+      });
+      // 🎯 عنصر جديد: إضافة طالب للفريق التطوعي — يظهر فقط لأعضاء الفريق التطوعي
+      items.add({
+        'icon': Icons.person_add_alt_1_rounded,
+        'title': 'إضافة عضو للفريق',
+        'sub': 'منح طالب صلاحية متطوع',
+        'color': const Color(0xFFE1F5EE),
+        'iconColor': const Color(0xFF0F6E56),
+        'index': -6,
+      });
     }
 
     return GridView.count(
@@ -395,8 +411,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const VolunteerLectureUploadScreen()));
             } else if (idx == -2) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const LectureCoursesScreen()));
-        }
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LectureCoursesScreen()));
+            } else if (idx == -6) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AddVolunteerScreen()));
+            }
 
           },
           child: Column(

@@ -228,6 +228,17 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<Map<String, dynamic>> giveVolunteerRole(
+      String universityId) async {
+    final headers = await _authHeaders();
+    final res = await http.put(
+      Uri.parse('$baseUrl/students/givevolunteerrole'),
+      headers: headers,
+      body: jsonEncode({'university_id': universityId}),
+    );
+    return jsonDecode(res.body);
+  }
+
   // ════════════════════════════════════════
   // SHARED APIs
   // ════════════════════════════════════════
@@ -316,6 +327,17 @@ class ApiService {
   }
 
   static Future<String> saveLectureFileToDevice(int id, String fileName) async {
+    final downloadsDir = Directory('/storage/emulated/0/Download/ITE_App');
+    if (!await downloadsDir.exists()) {
+      await downloadsDir.create(recursive: true);
+    }
+    final filePath = '${downloadsDir.path}/$fileName';
+    final file = File(filePath);
+
+    if (await file.exists()) {
+      throw Exception('ALREADY_DOWNLOADED');
+    }
+
     final headers = await _authHeaders();
     final res = await http.get(
       Uri.parse('$baseUrl/LectureFile/download/$id'),
@@ -323,13 +345,6 @@ class ApiService {
     );
     if (res.statusCode != 200) throw Exception('فشل تحميل الملف');
 
-    // مسار عام يظهر بمدير الملفات (Android فقط)
-    final downloadsDir = Directory('/storage/emulated/0/Download/ITE_App');
-    if (!await downloadsDir.exists()) {
-      await downloadsDir.create(recursive: true);
-    }
-    final filePath = '${downloadsDir.path}/$fileName';
-    final file = File(filePath);
     await file.writeAsBytes(res.bodyBytes);
     return filePath;
   }
