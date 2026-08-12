@@ -220,7 +220,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
     List courses = [];
     try {
-      final res = await ApiService.getEligibleCourses(type);
+      final res = await ApiService.getEligibleCourses(type, objectionType);
       // الـ API يرجع List مباشرة أو Map فيها data
       if (res is List) {
         courses = res;

@@ -374,10 +374,10 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<dynamic> getEligibleCourses(String requestType) async {
+  static Future<dynamic> getEligibleCourses(String requestType, [String? objectionType]) async {
     final headers = await _authHeaders();
     final res = await http.get(
-      Uri.parse('$baseUrl/student/eligible-courses?request_type=$requestType'),
+      Uri.parse('$baseUrl/student/eligible-courses?request_type=$requestType&objection_type=${objectionType ?? ''}'),
       headers: headers,
     );
     return jsonDecode(res.body);
