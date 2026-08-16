@@ -38,7 +38,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List _schedules = [];
   bool _loading = true;
   int? _targetYear;
+  String? _selectedDepartment;
   Map<String, dynamic>? _user;
+
+  static const Map<String, String> _departments = {
+    'software': 'هندسة البرمجيات',
+    'networks': 'نظم وشبكات',
+    'Basic Sciences': 'العلوم الأساسية',
+    'ai': 'الذكاء الاصطناعي',
+  };
+
+  String _departmentLabel(String? dept) => _departments[dept] ?? (dept ?? '');
 
   @override
   void initState() {
@@ -49,6 +59,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _init() async {
     _user = await ApiService.getUser();
     _targetYear = (_user?['year_of_study'] as int?) ?? 1;
+    _selectedDepartment = _user?['department'];
     setState(() {});
     _load();
   }
@@ -56,7 +67,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiService.getSchedules(targetYear: _targetYear);
+      final showDept = _targetYear != null && _targetYear! >= 4;
+      final res = await ApiService.getSchedules(
+        targetYear: _targetYear,
+        department: showDept ? _selectedDepartment : null,
+      );
       setState(() {
         _schedules = res['data'] ?? [];
         _loading = false;
@@ -65,6 +80,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       setState(() => _loading = false);
     }
   }
+
   Future<void> _downloadScheduleImage(String imageUrl) async {
     try {
       final response = await http.get(Uri.parse(imageUrl));
@@ -103,6 +119,94 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   int get _maxYear => (_user?['year_of_study'] as int?) ?? 5;
+
+  void _openDepartmentPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('اختر الاختصاص',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 12),
+                  ..._departments.entries.map((e) {
+                    final isSelected = _selectedDepartment == e.key;
+                    final isMyDept = _user?['department'] == e.key;
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() => _selectedDepartment = e.key);
+                        _load();
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.navy.withOpacity(0.06)
+                              : AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.navy
+                                : AppColors.border,
+                            width: isSelected ? 1.5 : 0.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(e.value,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: AppColors.textPrimary)),
+                                  if (isMyDept) ...[
+                                    const SizedBox(width: 6),
+                                    const Text('• قسمي',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.teal,
+                                            fontWeight: FontWeight.w600)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(Icons.check_circle_rounded,
+                                  color: AppColors.teal, size: 20),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,6 +346,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               }).toList(),
             ),
           ),
+          if (_targetYear != null && _targetYear! >= 4) ...[
+            const SizedBox(height: 14),
+            const Text('الاختصاص',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _openDepartmentPicker,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border, width: 0.5),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_departmentLabel(_selectedDepartment),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
+                    const Icon(Icons.unfold_more_rounded,
+                        size: 18, color: AppColors.textHint),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -260,26 +397,61 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           // هيدر الكارد
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(s['title'] ?? 'جدول دراسي',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary)),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.passBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text('فصل $semester',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.passGreen)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (_targetYear != null && _targetYear! >= 4 &&
+                        (s['department'] ?? '').toString().isNotEmpty)
+                      GestureDetector(
+                        onTap: _openDepartmentPicker,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.navy.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_departmentLabel(s['department']),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.navy)),
+                              const SizedBox(width: 2),
+                              const Icon(Icons.unfold_more_rounded,
+                                  size: 13, color: AppColors.navy),
+                            ],
+                          ),
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.passBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('فصل $semester',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.passGreen)),
+                    ),
+                  ],
                 ),
               ],
             ),

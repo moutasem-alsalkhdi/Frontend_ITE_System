@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_card.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({super.key});
 
@@ -142,6 +142,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
   Widget _buildAnnouncementCard(Map a) {
     final isAdmin = a['sender_role'] == 'admin';
     final accentColor = isAdmin ? AppColors.amber : AppColors.teal;
+    final mediaUrl = a['media_url'] as String?;
+    final isImage = mediaUrl != null &&
+        RegExp(r'\.(jpg|jpeg|png|gif|webp)$', caseSensitive: false)
+            .hasMatch(mediaUrl);
 
     return Container(
       decoration: BoxDecoration(
@@ -172,6 +176,69 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
                     color: AppColors.textSecondary,
                     height: 1.6)),
           ],
+
+          // ===== المرفق (صورة أو ملف) =====
+          if (mediaUrl != null) ...[
+            const SizedBox(height: 10),
+            if (isImage)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: GestureDetector(
+                  onTap: () => _openFullImage(context, mediaUrl),
+                  child: Image.network(
+                    mediaUrl,
+                    width: double.infinity,
+                    height: 160,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (ctx, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        height: 160,
+                        alignment: Alignment.center,
+                        color: AppColors.background,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    errorBuilder: (ctx, error, stack) => Container(
+                      height: 100,
+                      alignment: Alignment.center,
+                      color: AppColors.background,
+                      child: const Icon(Icons.broken_image_outlined,
+                          color: AppColors.textHint),
+                    ),
+                  ),
+                ),
+              )
+            else
+              InkWell(
+                onTap: () => _openAttachment(mediaUrl),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.insert_drive_file_outlined,
+                          color: AppColors.teal, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text('عرض الملف المرفق',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      const Icon(Icons.open_in_new, size: 16, color: AppColors.textHint),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -191,6 +258,25 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
         ],
       ),
     );
+  }
+
+  void _openFullImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: InteractiveViewer(
+          child: Image.network(url),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAttachment(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Widget _buildNotificationsList() {

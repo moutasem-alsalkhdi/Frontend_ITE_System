@@ -182,10 +182,13 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> getSchedules({int? targetYear}) async {
+  static Future<Map<String, dynamic>> getSchedules({int? targetYear, String? department}) async {
     final headers = await _authHeaders();
     String url = '$baseUrl/student/schedules';
-    if (targetYear != null) url += '?target_year=$targetYear';
+    final params = <String>[];
+    if (targetYear != null) params.add('target_year=$targetYear');
+    if (department != null && department.isNotEmpty) params.add('department=${Uri.encodeComponent(department)}');
+    if (params.isNotEmpty) url += '?${params.join('&')}';
     final res = await http.get(Uri.parse(url), headers: headers);
     return jsonDecode(res.body);
   }
